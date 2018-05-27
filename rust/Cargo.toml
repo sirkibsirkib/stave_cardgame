@@ -1,0 +1,8 @@
+[package]
+name = "stave_game"
+version = "0.1.0"
+authors = ["sirkibsirkib <christopher.esterhuyse@gmail.com>"]
+
+[dependencies]
+rand = "0.4"
+ggez = "0.4"
