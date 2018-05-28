@@ -6,3 +6,4 @@ authors = ["sirkibsirkib <christopher.esterhuyse@gmail.com>"]
 [dependencies]
 rand = "0.4"
 ggez = "0.4"
+fnv = "1.0.6"
