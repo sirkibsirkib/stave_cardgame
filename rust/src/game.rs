@@ -1,3 +1,9 @@
+use std::{
+	self,
+	slice,
+};
+
+
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Player {
 	Top, // starts at index 2
@@ -31,18 +37,25 @@ impl Stave {
 		self.slots.iter().filter(|x| x.is_none()).count()
 	}
 
-	fn iter_slots_forward(&self, player:Player) -> impl Iterator<Item=&usize> {
+	pub fn iter_slots_forward(&self, player:Player) -> impl Iterator<Item=(usize, &Option<Card>)> {
+		let clos = move |&x| (x, &self.slots[x]);
 		match player {
-			Player::Bottom => Self::UPWARD.iter(),
-			Player::Top => Self::DOWNWARD.iter(),
+			Player::Bottom => Self::UPWARD.iter().map(clos),
+			Player::Top => Self::DOWNWARD.iter().map(clos),
 		}
 	}
 
-	pub fn place_card(&mut self, card:Card, player:Player) {
-		let slot = self.iter_slots_forward(player)
-		.filter(|&&slot| self.slots[slot].is_none())
-		.nth(0)
-		.expect("No empty slots");
+	pub fn place_card(&mut self, card:Card) -> Option<usize> {
+		let hold;
+		if let Some((slot, _card)) = self.iter_slots_forward(card.owner())
+				.filter(|(_slot,card)| card.is_none())
+				.nth(0) {
+			hold = slot;
+		} else {
+			return None;
+		}
+		self.slots[hold] = Some(card);
+		return Some(hold)
 	}
 }
 

@@ -21,6 +21,8 @@ use ggez::{
     event::{
         self,
         Keycode,
+        MouseState,
+        MouseButton,
         Mod,
     },
 };
@@ -69,14 +71,40 @@ impl State {
 			hand_top: (0..5).map(|_| generate_new_card(&mut rng, Player::Top)).collect(),
 			hand_bottom: (0..5).map(|_| generate_new_card(&mut rng, Player::Bottom)).collect(),
 			stave_mesh: build_rect_mesh(ctx, 14.0, 300.0).unwrap(),
-			card_mesh: build_rect_mesh(ctx, 50.0, 30.0).unwrap(),
+			card_mesh: build_rect_mesh(ctx, 80.0, 60.0).unwrap(),
 		}
 	}
 	fn update_tick(&mut self, ctx: &mut Context) -> GameResult<()> {
         Ok(())
 	}
-}
 
+
+    fn owner_x_shift(player:Player) -> f32 {
+    	match player {
+    		Player::Top => 20.0,
+    		Player::Bottom => -20.0,
+    	}
+    }
+
+    fn stave_point(stave_id:usize) -> Point2 {
+		Point2::new(
+    		(stave_id * 230) as f32 + 150.0,
+    		50.0,
+    	)
+    }
+
+    fn card_point(stave_id:usize, slot_id:usize, card:&Card) -> Point2 {
+    	let stave_point = Self::stave_point(stave_id);
+		let translated = Point2::new(
+    		Self::owner_x_shift(card.owner()),
+    		(slot_id * 100)  as f32 + 20.0,
+    	);
+    	Point2::new(
+    		stave_point.x + translated.x,
+    		stave_point.y + translated.y,
+    	)
+    }
+}
 
 const DESIRED_UPS: u32 = 30;
 impl event::EventHandler for State {
@@ -86,6 +114,28 @@ impl event::EventHandler for State {
         }
         Ok(())
     }
+
+    fn mouse_button_down_event(
+	    &mut self, 
+	    _ctx: &mut Context, 
+	    button: MouseButton, 
+	    x: i32, 
+	    y: i32
+	) {
+    	println!("x{}, y{}, {:?}", x, y, button);
+	}
+
+    // fn mouse_motion_event(
+    //     &mut self, 
+    //     _ctx: &mut Context, 
+    //     _state: MouseState, 
+    //     x: i32, 
+    //     y: i32, 
+    //     _xrel: i32, 
+    //     _yrel: i32
+    // ) {
+    // 	println!("x{}, y{}", x, y)
+    // }
 
     fn key_down_event(&mut self, ctx: &mut Context, keycode: Keycode, _keymod: Mod, _repeat: bool) {
         match keycode {
@@ -109,26 +159,17 @@ impl event::EventHandler for State {
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx);
         for (i, stave) in self.staves.iter().enumerate() {
-        	for j in 0..3 {
-        		if let Some(card) = stave.card_at(j) {
-        			let screen_point = Point2::new(
-		        		(i * 230) as f32 + 135.0,
-		        		(j * 70)  as f32 + 50.0,
-		        	);
+        	for (slot, card) in stave.iter_slots_forward(Player::Top) {
+        		if let Some(ref card) = card {
 		        	let param = graphics::DrawParam {
-		    			dest: screen_point, .. Default::default()
+		    			dest: Self::card_point(i, slot, card), .. Default::default()
 		    		};
     				graphics::draw_ex(ctx, &self.card_mesh, param)?;
         		}
         	}
-
     		graphics::set_color(ctx, col_to_color(stave.col()))?;
-        	let screen_point = Point2::new(
-        		(i * 230) as f32 + 150.0,
-        		50.0,
-        	);
         	let param = graphics::DrawParam {
-    			dest: screen_point, .. Default::default()
+    			dest: Self::stave_point(i), .. Default::default()
     		};
     		graphics::draw_ex(ctx, &self.stave_mesh, param)?;
         }
@@ -157,6 +198,9 @@ fn main() {
 	let c = conf::Conf::new();
     let mut ctx = &mut Context::load_from_conf("super_simple", "ggez", c).unwrap();
     let mut state = State::new(&mut ctx);
+    state.staves[0].place_card(generate_new_card(&mut rand::thread_rng(), Player::Top));
+    state.staves[0].place_card(generate_new_card(&mut rand::thread_rng(), Player::Top));
+    state.staves[0].place_card(generate_new_card(&mut rand::thread_rng(), Player::Top));
     event::run(ctx, &mut state).unwrap();
 }
 
