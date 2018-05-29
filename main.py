@@ -1,9 +1,9 @@
 import random
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Set
 import sys
 
 ## TYPE ALIASES
-Card = int
+Card = (bool, int)
 Pos = Tuple[int, int]
 Color = int
 
@@ -24,24 +24,21 @@ class CardDatabase:
 	@staticmethod
 	def col_value(card:Card, color:Color) -> int:
 		assert(0 <= color < 3)
-		return CardDatabase.card_tups[card][color]
+		return CardDatabase.card_tups[card[1]][color]
 
 	@staticmethod
-	def r(card:Card) -> int:
-		return CardDatabase.card_tups[card][0]
+	def r(card:Card) -> int: return CardDatabase.col_value(card, 0)
 
 	@staticmethod
-	def g(card:Card) -> int:
-		return CardDatabase.card_tups[card][1]
+	def g(card:Card) -> int: return CardDatabase.col_value(card, 1)
 
 	@staticmethod
-	def b(card:Card) -> int:
-		return CardDatabase.card_tups[card][2]
+	def b(card:Card) -> int: return CardDatabase.col_value(card, 2)
 
 
 class PlayerCards:
-	def __init__(self, deck:set, init_hand_size:int):
-		self.deck_sequence = list(deck)
+	def __init__(self, deck:set, player_bool:bool, init_hand_size:int):
+		self.deck_sequence = list(map(lambda c: (player_bool, c), deck))
 		random.shuffle(self.deck_sequence)
 		self.hand = [self.draw() for _ in range(init_hand_size)]
 
@@ -94,7 +91,7 @@ class Board:
 
 	def background_str(self, stave_id:int) -> str:
 		col = self.stave_cols[stave_id]
-		return "     {}      ".format('#' if col is None else {0:'r', 1:'g', 2:'b'}[col])
+		return "      {}        ".format('#' if col is None else {0:'r', 1:'g', 2:'b'}[col])
 
 
 	def action_slide(self, src:Pos, dest:Pos):
@@ -124,39 +121,41 @@ class Board:
 				if card is None:
 					sys.stdout.write(self.background_str(stave_id))
 				else:
-					sys.stdout.write("{} ({},{},{})   ".format(
-						"p",
-						CardDatabase.r(card),
-						CardDatabase.g(card),
-						CardDatabase.b(card),
-					))
+					sys.stdout.write(display_card(card))
 
 			print()
 			for stave_id in range(3):
 				sys.stdout.write(self.background_str(stave_id))
 			print()
 
+
+def display_card(card:Card):
+	return "{}: #{} ({},{},{})  ".format(
+		"p" if card[0] else "o",
+		card[1],
+		CardDatabase.r(card),
+		CardDatabase.g(card),
+		CardDatabase.b(card),
+	)
+
+
 def display_player_cards(player_cards:PlayerCards):
 	x = player_cards.deck_cards_remaining()
 	print("["* x + " {} ]".format(x))
 	for card in player_cards.hand:
-		print("[{}_ {}`{}`{}]".format(
-			card,
-			CardDatabase.r(card),
-			CardDatabase.g(card),
-			CardDatabase.b(card),
-		))
+		print(display_card(card))
 	print()
 
 
-def play(player_deck:set, opponent_deck:set, seed:int):
+def play(player_deck:Set[int], opponent_deck:Set[int], seed:int):
 	random.seed(seed)
-	player_cards = PlayerCards(player_deck, init_hand_size=3)
-	opponent_cards = PlayerCards(opponent_deck, init_hand_size=3)
+	player_cards = PlayerCards(player_deck, True, init_hand_size=3)
+	opponent_cards = PlayerCards(opponent_deck, False, init_hand_size=3)
 	board = Board()
 
 	board.action_place(player_cards, 0, (0,0))
 	board.action_place(player_cards, 0, (1,0))
+	board.action_place(opponent_cards, 0, (2,1))
 	board.display()
 	display_player_cards(player_cards)
 	display_player_cards(opponent_cards)
