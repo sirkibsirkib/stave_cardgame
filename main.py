@@ -20,6 +20,12 @@ class CardDatabase:
 		7: (5,0,1),
 		8: (2,0,2),
 		9: (2,3,4),
+		10: (1,1,5),
+		11: (4,4,0),
+		12: (3,2,4),
+		13: (0,1,3),
+		14: (3,2,4),
+		15: (0,2,3),
 	}
 
 	@staticmethod
@@ -123,7 +129,7 @@ class Board:
 
 	def background_str(self, stave_id:int) -> str:
 		col = self.stave_cols[stave_id]
-		return "      {}        ".format('#' if col is None else {0:'r', 1:'g', 2:'b'}[col])
+		return "        {}        ".format('#' if col is None else {0:'r', 1:'g', 2:'b'}[col])
 
 	@staticmethod
 	def map_owner_to_forward_diff(owner:bool) -> int:
@@ -155,6 +161,22 @@ class Board:
 		if just_testing: return True
 		self.insert_card(card, dest)
 		self.remove_card(src)
+
+	def victory(self):
+		res = [0,0,0]
+		for stave_id in range(3):
+			t,f = 0,0
+			for slot_id in range(3):
+				card = self.get_card((stave_id, slot_id))
+				if card is not None:
+					val = CardDatabase.col_value(card, self.stave_cols[stave_id])
+					if card[0]: 
+						t += val
+					else:
+						f += val
+			res[stave_id] = (t,f, "==" if t==f else ("p " if t>f else "o "))
+		return res
+
 
 	def display(self):
 		print()
@@ -229,18 +251,18 @@ class Actor:
 
 
 def display_card(card:Card):
-	return "{}: #{} ({},{},{})  ".format(
+	return ("{}: #{} ({},{},{})".format(
 		"p" if card[0] else "o",
 		card[1],
 		CardDatabase.r(card),
 		CardDatabase.g(card),
 		CardDatabase.b(card),
-	)
+	)).ljust(17)
 
 
 def display_player_cards(player_cards:PlayerCards):
 	x = player_cards.deck_cards_remaining()
-	print("["* x + " {} ]".format(x))
+	print("["* x + " {} ]".format(x) if x > 0 else "<deck empty>")
 	for card in player_cards.hand:
 		print(display_card(card))
 	print()
@@ -249,8 +271,8 @@ def display_player_cards(player_cards:PlayerCards):
 
 def play(player_deck:Set[int], opponent_deck:Set[int], seed:int):
 	random.seed(seed)
-	player_cards = PlayerCards(player_deck, True, init_hand_size=3)
-	opponent_cards = PlayerCards(opponent_deck, False, init_hand_size=3)
+	player_cards = PlayerCards(player_deck, True, init_hand_size=1)
+	opponent_cards = PlayerCards(opponent_deck, False, init_hand_size=2)
 	board = Board()
 
 	player_turn = True
@@ -270,6 +292,7 @@ def play(player_deck:Set[int], opponent_deck:Set[int], seed:int):
 			board.display()
 			display_player_cards(player_cards)
 			display_player_cards(opponent_cards)
+			print(board.victory())
 			print('chose ', actor)
 			time.sleep(0.5)
 
@@ -277,11 +300,12 @@ def play(player_deck:Set[int], opponent_deck:Set[int], seed:int):
 		board.display()
 		display_player_cards(player_cards)
 		display_player_cards(opponent_cards)
-		print("END TURN")
+		print(board.victory())
+		print("=============== END TURN =======================")
 		player_turn = not player_turn
 		board.new_turn_begin()
 		time.sleep(2.0)
 #### TEST
-p = {1,2,3,4,5,6}
-o = {4,5,6,7,8}
+p = {1,2,3,4,5,6,7,8,9}
+o = {4,5,6,7,8,9,10,11,12,13,14}
 play(p, o, 5)
