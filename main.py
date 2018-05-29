@@ -46,12 +46,12 @@ class PlayerCards:
 
 	def draw_into_hand(self):
 		if len(self.deck_sequence) > 0:
-			self.hand.push(self.deck_sequence.pop())
+			self.hand.append(self.deck_sequence.pop())
 			return True
 		return False
 
-	def draw(self) -> int:
-		return 
+	def draw(self) -> Card:
+		return self.deck_sequence.pop()
 
 	def remove_from_hand(self, hand_index:int):
 		card = self.hand[hand_index]
@@ -186,7 +186,7 @@ class Board:
 		try:
 			for card in player_cards.hand:
 				for stave_id in range(3):
-					try: self.action_place(card, stave_id, just_testing=True); yield Actor(0, (card, stave_id))
+					try: self.action_place(card, stave_id, just_testing=True); yield Actor(0, (card, stave_id), player_cards=player_cards)
 					except AssertionError as e: pass
 
 			for src in self.yield_positions():
@@ -197,7 +197,7 @@ class Board:
 					for i in range(3):
 						if abs(i-src[0]) == 1:
 							dest = (i, src[1])
-							try: self.action_slide(src, dest, just_testing=True); yield Actor(2, (src, dest), player_cards=player_cards)
+							try: self.action_slide(src, dest, just_testing=True); yield Actor(2, (src, dest))
 							except AssertionError as e: pass
 		except GeneratorExit as e:
 			return
@@ -221,7 +221,7 @@ class Actor:
 	def execute(self, board:Board):
 		if self.code == 0:
 			board.action_place(*self.args)
-			player_cards.remove_matching_card_from_hand(card)
+			self.player_cards.remove_matching_card_from_hand(self.args[0])
 		elif self.code == 1:
 			board.action_forward(*self.args)
 		else:
@@ -255,10 +255,13 @@ def play(player_deck:Set[int], opponent_deck:Set[int], seed:int):
 
 	player_turn = True
 	while True:
-
+		# one loop per turn
+		cards = player_cards if player_turn else opponent_cards
+		cards.draw_into_hand()
 		while True:
+			# one loop per move
 			actor_list = list(board.yield_actors(
-				player_cards if player_turn else opponent_cards
+				cards
 			))
 			if len(actor_list) == 0 or random.randint(0,3)==0:
 				break
