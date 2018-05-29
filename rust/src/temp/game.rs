@@ -34,8 +34,8 @@ impl Stave {
 	}
 
 	pub fn remove_card(&mut self, slot:usize) -> Option<Card> {
-		let x = self.slots[slot];
-		self.slots[slot] = None;
+		let x = self.slots.remove(slot);
+		self.slots.insert(slot, None);
 		x
 	}
 
