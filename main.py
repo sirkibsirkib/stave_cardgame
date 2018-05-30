@@ -50,6 +50,13 @@ class PlayerCards:
 		self.player_bool = player_bool
 		self.hand = [self.draw() for _ in range(init_hand_size)]
 
+	def clone(self):
+		x = PlayerCards.__new__(PlayerCards)
+		x.deck_sequence = list(self.deck_sequence)
+		x.player_bool = self.player_bool
+		x.hand = list(self.hand)
+		return x
+
 	def draw_into_hand(self):
 		if len(self.deck_sequence) > 0:
 			self.hand.append(self.deck_sequence.pop())
@@ -81,6 +88,13 @@ class Board:
 		self.grid = [[None for _ in range(3)] for _ in range(3)]
 		self.stave_cols = [None for _ in range(3)]
 		self.place_used = False
+
+	def clone(self):
+		x = Board.__new__(Board)
+		x.grid = [list(self.grid[i]) for i in range(3)]
+		x.stave_cols = list(self.stave_cols)
+		x.place_used = self.place_used
+		return x
 
 	def get_card(self, pos:Pos) -> Card:
 		return self.grid[pos[0]][pos[1]]
@@ -208,7 +222,7 @@ class Board:
 		try:
 			for card in player_cards.hand:
 				for stave_id in range(3):
-					try: self.action_place(card, stave_id, just_testing=True); yield Actor(0, (card, stave_id), player_cards=player_cards)
+					try: self.action_place(card, stave_id, just_testing=True); yield Actor(0, (card, stave_id))
 					except AssertionError as e: pass
 
 			for src in self.yield_positions():
@@ -230,20 +244,18 @@ actor_code_map = {
 	2: "slide  ",
 }
 class Actor:
-	def __init__(self, code:int, args, player_cards=None):
+	def __init__(self, code:int, args):
 		"""A class that represents an executable action"""
 		self.code = code
 		self.args = args
-		if player_cards is not None:
-			self.player_cards = player_cards
 
 	def __repr__(self):
 		return "code:{} ({}), args={}".format(self.code, actor_code_map[self.code], self.args)
 
-	def execute(self, board:Board):
+	def execute(self, board:Board, player_cards:PlayerCards):
 		if self.code == 0:
 			board.action_place(*self.args)
-			self.player_cards.remove_matching_card_from_hand(self.args[0])
+			player_cards.remove_matching_card_from_hand(self.args[0])
 		elif self.code == 1:
 			board.action_forward(*self.args)
 		else:
@@ -267,6 +279,46 @@ def display_player_cards(player_cards:PlayerCards):
 		print(display_card(card))
 	print()
 
+def heuristic(board:Board):
+	h = 0 # pos for True player, neg for False opponent
+	for x in board.victory():
+		h += x[0] - x[1] + (5 if x[2] else -5)
+	return h
+
+def minimax(board:Board, turn:bool, depth_to_go:int, player_cards:PlayerCards, opponent_cards:PlayerCards) -> Tuple[float,Actor]:
+	if depth_to_go == 0:
+		# no more depth. time to estimate
+		return heuristic(board), None
+
+	# ending turn is the default choice (None) to beat
+	turn_end_board = board.clone()
+	turn_end_board.new_turn_begin()
+	best_h, _ = minimax(turn_end_board, not turn, depth_to_go-1, player_cards, opponent_cards)
+	best_actor = None
+
+	if turn: # player turn
+		for actor in board.yield_actors(player_cards):
+			branch_board = board.clone()
+			branch_p_cards = player_cards.clone()
+			actor.execute(branch_board, branch_p_cards)
+			h,a = minimax(branch_board, turn, depth_to_go-1, branch_p_cards, opponent_cards)
+			if h > best_h: # maximizing
+				best_actor = actor
+				best_h = h
+	else: # opponent turn
+		for actor in board.yield_actors(opponent_cards):
+			branch_board = board.clone()
+			branch_o_cards = opponent_cards.clone()
+			actor.execute(branch_board, branch_o_cards)
+			h,a = minimax(branch_board, turn, depth_to_go-1, player_cards, branch_o_cards)
+			if h < best_h: # minimizing
+				best_actor = actor
+				best_h = h
+	# print(" "*(12-depth_to_go) + (">p" if turn else ">o"))
+	return best_h, best_actor
+
+
+
 
 
 def play(player_deck:Set[int], opponent_deck:Set[int], seed:int):
@@ -274,8 +326,13 @@ def play(player_deck:Set[int], opponent_deck:Set[int], seed:int):
 	player_cards = PlayerCards(player_deck, True, init_hand_size=1)
 	opponent_cards = PlayerCards(opponent_deck, False, init_hand_size=2)
 	board = Board()
-
 	player_turn = True
+
+	# TODO the only winning move is not to play
+	h,a = minimax(board, not player_turn, 10, player_cards, opponent_cards)
+	print(h, a)
+	return
+
 	while True:
 		# one loop per turn
 		cards = player_cards if player_turn else opponent_cards
@@ -288,7 +345,7 @@ def play(player_deck:Set[int], opponent_deck:Set[int], seed:int):
 			if len(actor_list) == 0 or random.randint(0,3)==0:
 				break
 			actor = random.choice(actor_list)
-			actor.execute(board)
+			actor.execute(board, cards)
 			board.display()
 			display_player_cards(player_cards)
 			display_player_cards(opponent_cards)
