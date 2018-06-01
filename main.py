@@ -72,6 +72,9 @@ class PlayerCards:
 		del self.hand[hand_index]
 		return card
 
+	def no_hand_no_deck(self) -> bool:
+		return len(self.deck) + len(self.hand) == 0
+
 	def deck_cards_remaining(self) -> int:
 		return len(self.deck_sequence)
 
@@ -324,7 +327,13 @@ def heuristic(board:Board, player_cards:PlayerCards, opponent_cards:PlayerCards)
 		h -= 0.1
 	return h
 
-def minimax(board:Board, turn:bool, depth_to_go:int, player_cards:PlayerCards, opponent_cards:PlayerCards) -> Tuple[float,Actor]:
+def starting_h(turn:bool):
+	return -999999 if turn else 999999
+
+calls = 0
+def minimax(board:Board, turn:bool, depth_to_go:int, player_cards:PlayerCards, opponent_cards:PlayerCards, best_h_above) -> Tuple[float,Actor]:
+	global calls
+	calls += 1
 	if depth_to_go == 0 or board.game_over:
 		# no more depth. time to estimate
 		return heuristic(board, player_cards, opponent_cards), None
@@ -332,29 +341,39 @@ def minimax(board:Board, turn:bool, depth_to_go:int, player_cards:PlayerCards, o
 	# ending turn is the default choice (None) to beat
 	turn_end_board = board.clone()
 	turn_end_board.new_turn_begin()
-	best_h, _ = minimax(turn_end_board, not turn, depth_to_go-1, player_cards, opponent_cards)
-	best_actor = None
-
+	best_h, best_actor = starting_h(turn), None
 
 	if turn: # player turn
 		for actor in board.yield_actors(player_cards):
 			branch_board = board.clone()
 			branch_p_cards = player_cards.clone()
 			actor.execute(branch_board, branch_p_cards)
-			h,a = minimax(branch_board, turn, depth_to_go-1, branch_p_cards, opponent_cards)
-			if h >= best_h: # maximizing
+			h,a = minimax(branch_board, turn, depth_to_go-1, branch_p_cards, opponent_cards, None)
+			if h > best_h: # maximizing
 				best_actor = actor
 				best_h = h
+				if best_h_above is not None:
+					if best_h >= best_h_above:
+						return best_h * 0.9, best_actor
 	else: # opponent turn
 		for actor in board.yield_actors(opponent_cards):
 			branch_board = board.clone()
 			branch_o_cards = opponent_cards.clone()
 			actor.execute(branch_board, branch_o_cards)
-			h,a = minimax(branch_board, turn, depth_to_go-1, player_cards, branch_o_cards)
-			if h <= best_h: # minimizing
+			h,a = minimax(branch_board, turn, depth_to_go-1, player_cards, branch_o_cards, None)
+			if h < best_h: # minimizing
 				best_actor = actor
 				best_h = h
+				if best_h_above is not None:
+					if best_h <= best_h_above:
+						return best_h * 0.9, best_actor
 	# print(" "*(12-depth_to_go) + (">p" if turn else ">o"))
+
+	h,a = minimax(turn_end_board, not turn, depth_to_go-1, player_cards, opponent_cards, best_h)
+	if (h > best_h if turn else h < best_h):
+		best_actor = None # end turn
+		best_h = h
+
 	return best_h * 0.9, best_actor
 
 
@@ -378,8 +397,11 @@ def play(player_deck:Set[int], opponent_deck:Set[int], seed:int):
 		cards = player_cards if player_turn else opponent_cards
 		cards.draw_into_hand()
 		while not board.game_over:
-			h,a = minimax(board, player_turn, 5, player_cards, opponent_cards)
+			global calls
+			calls = 0
+			h,a = minimax(board, player_turn, 5, player_cards, opponent_cards, None)
 			print(h, a)
+			print('calls', calls)
 			time.sleep(0.1)
 			if a is None:
 				break
