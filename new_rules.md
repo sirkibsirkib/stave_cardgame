@@ -32,8 +32,6 @@ At the start of their turn:
   requires all:
 	  1. `A`'s deck is not empty.
 	  1. It is not the very first turn of the game. 
-
-`A` draws a card from their deck and places it face-up into their hand.
 1. They may choose to [END] if the _end condition_ is satisfied. (the following subsection details actions and their conditions).
 
 After this, they may perform any number of the following
@@ -41,8 +39,11 @@ _actions_ as long as the relevant _conditions_ are satisfied:
 * [PLACE]
 * [FORWARD]
 * [SLIDE]
-At any time, `A` may choose to end their turn. When no more moves are possible this turn,
-`A`'s turn ends also. At the end of their turn, it becomes `B`'s turn, for whom the
+
+After any (potentially empty) sequence of actions, `A` may decide to end their turn.
+The turn ends also if no more moves are currently possible.
+
+At the end of their turn, it becomes `B`'s turn, for whom the
 turn progresses symmetrically.
 
 ## Actions
@@ -109,14 +110,14 @@ Note that if `Q` slides left to stave0, it cannot slide back again.
 ```
 
 ### [END]
-A player ends the game, deciding the victor.
+`A` ends the game, deciding the victor.
 requires any:
 1. The previous 2 consecutive turns saw no _actions_.
 1. All 9 total board slots are occupied.
 
 At the moment the game ends, the victor is computed.
 A player's _contribution_ is defined as the color-value of card `X` for the stave's color, for all cards `X` that are on the stave, and belong to the player.
-A player is said to _win a stave_ if their _contribution_ is strictly greater than that of the opposing player.
+A player is said to _win a stave_ if their _contribution_ is strictly greater than the _contribution_ of the opposing player for the same stave.
 The victor is the player who has won the most staves. (equivalent staves results in a tie).
 
 ## Combat
