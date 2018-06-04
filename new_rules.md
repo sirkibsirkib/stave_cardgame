@@ -5,7 +5,7 @@ Two players (referred to as `A` and `B`) sit accross from another, and arrange (
 
 For brevity in the text to follow, staves are indexed `0, 1, 2`, and the three
 slots within each stave also. This results in a 2-Dimensional grid with coordinates
-(0,0) to (2,2).
+(0,0) to (2,2). Note that staves (0,1) and (1,2) are adjacent, while (0,2) are not.
 ```
         <--B's side-->
 
@@ -29,7 +29,7 @@ correspond to colors `red, green, blue` respectively. None of these values chang
 The game begins with player `A`'s turn.
 At the start of their turn:
 1. `A` draws a card from their deck and places it face-up into their hand.
-  REQUIRES:
+  requires all:
 	  1. `A`'s deck is not empty.
 	  1. It is not the very first turn of the game. 
 
@@ -48,11 +48,76 @@ turn progresses symmetrically.
 ## Actions
 The following actions are described in the context of `A`'s turn. They apply symmetrically with respect to `A` and `B` during `B`'s turn.
 
-1. [PLACE]
-`A` places a card from their hand into any slot on the board.
-  REQUIRES:
-  
+### [PLACE]
+`A` places a card from their hand into any slot `S` on the board.
+requires any:
+1. `S` is not occupied and is the nearest empty slot to `A` on the stave.
+1. `S` is already occupied.
 
+For the 2st case, if the stave is currently grey, `A` chooses the color for the stave, amongst all values of colors for which the card has a _maximal_ value out of all possibilities.
+
+For the 2nd case, the new card will occupy an existing slot. This triggers _combat_ between the new card (as the attacker) and the existing card (as the defender). `A` chooses the color for combat, amongst all values of colors for which the _attacker_ card has a _minimal_ value out of all possibilities.
+eg: For a card `(1,3,1)` `A` may choose either 1-value (`red` or `blue`).
+
+### [Forward]
+`A` moves one of their cards `X` on the board _forward_ one slot,
+where 'forward' is defined as 'toward the opponent player'.
+requires all:
+1. The card was not [PLACE]d this turn.
+1. The destination is on the same stave.
+1. The destination is not already occupied by a card.
+
+In the following example, let cards `{P,R,S}` belong to `A`. This turn, `A` cannot
+move `P` as the forward slot is impeded by `Q`. `R` can move forward to position `(1,0)`.
+`S` cannot move forward as there is no slot in the forward direction on `stave2`.
+```
+        <--B's side-->
+      stave0  stave1  stave2
+slot0   |       |       S
+slot1   Q       R       |
+slot2   P       |       |
+        <--A's side-->
+```
+
+### [Slide]
+`A` moves one of their cards `X` on the board to the same slot on an adjacent stave (ie horizontally).
+requires all:
+1. The card was not [PLACE]d this turn.
+1. The destination stave is not gray.
+1. require any:
+      1. The source and destination staves are of the same color.
+      1. The color-value of `X` for the stave it is moving _from_ is _strictly larger_
+      than its color-value for the stave is it moving _to_.
+
+If `X` slides into an occupied slot, then this triggers combat between `X` (as attacker)
+and the existing card (as defender) with the color for combat matching the color
+of the stave `X` is sliding _from_.
+
+Additionally, if a slide would leave a stave empty, the stave is colored _grey_.
+
+In the following example, let cards `P,Q` belong to `A`. Card `P` cannot slide to stave1,
+as its color value would not strictly decrease (blue=2, red=2). Nor can `P` slide to stave2, as
+this stave is not adjacent to its current stave, stave0.
+Card `Q` may slide to stave0 (strict decrease from red=1 to blue=0) or to stave2 (red-to-red slide).
+Note that if `Q` slides left to stave0, it cannot slide back again.
+```
+    stave0(blue)    stave1(red)    stave2(red) 
+         |               |              |
+        P:(2,1,2)        |              |
+         |              Q:(1,2,0)       |
+
+```
+
+### [END]
+A player ends the game, deciding the victor.
+requires any:
+1. The previous 2 consecutive turns saw no _actions_.
+1. All 9 total board slots are occupied.
+
+At the moment the game ends, the victor is computed.
+A player's _contribution_ is defined as the color-value of card `X` for the stave's color, for all cards `X` that are on the stave, and belong to the player.
+A player is said to _win a stave_ if their _contribution_ is strictly greater than that of the opposing player.
+The victor is the player who has won the most staves. (equivalent staves results in a tie).
 
 ## Combat
 Two cards (an attacker and a defender) _enter combat_ with some defined color `C` when they occupy the same slot on the board.
