@@ -30,8 +30,8 @@ The game begins with player `A`'s turn.
 At the start of their turn:
 1. `A` draws a card from their deck and places it face-up into their hand.
   REQUIRES:
-  1. `A`'s deck is not empty.
-  1. It is not the very first turn of the game. 
+	  1. `A`'s deck is not empty.
+	  1. It is not the very first turn of the game. 
 
 `A` draws a card from their deck and places it face-up into their hand.
 1. They may choose to [END] if the _end condition_ is satisfied. (the following subsection details actions and their conditions).
@@ -50,7 +50,15 @@ The following actions are described in the context of `A`'s turn. They apply sym
 
 1. [PLACE]
 `A` places a card from their hand into any slot on the board.
+  REQUIRES:
+  
 
+
+## Combat
+Two cards (an attacker and a defender) _enter combat_ with some defined color `C` when they occupy the same slot on the board.
+The attacker wins the combat if their value for `C` is at least as much as the defender's value for `C`. Otherwise, the defender wins combat.
+
+The winner of combat remains in the slot, and the loser is removed from the game.
 
 
 
